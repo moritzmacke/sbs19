@@ -1,0 +1,12 @@
+
+TODO
+what works right now:
+ 
+gforth dlx.fs
+
+load_test_matrix mat1.fs
+test_matrix print_matrix
+test_matrix testdlx testalg
+
+load_test_matrix mat2.fs
+test_matrix testdlx testalg
