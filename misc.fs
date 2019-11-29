@@ -9,8 +9,19 @@
 
 \ ---------------------------------- Memory -----------------------------------
   
+variable mem_stat_allocs
+variable mem_stat_frees
+\ variable mem_stat_total_alloc
+\ variable mem_stat_total_free
+  
+: mem_stats
+  ." calls to alloc: " mem_stat_allocs @ . cr
+  ." calls to free: " mem_stat_frees @ . cr
+  ;
+  
 : mem_alloc ( n -- addr )
   allocate 0<> if s" memory error" throw endif
+  mem_stat_allocs increment
   ;
   
 : mem_resize ( addr n -- addr )
@@ -20,9 +31,10 @@
     drop
   endif
   ;
-  
+   
 : mem_free ( addr -- )
   free 0<> if s" memory error" throw endif
+  mem_stat_frees increment
   ;
   
 : alloc_empty ( n -- addr ) 
@@ -37,6 +49,16 @@
   
 : unallot_above ( addr -- )
   here - allot
+  ;
+  
+\ addr, old, req
+: dyn_resize ( addr n1 n2 -- addr n1/n3 )
+    2dup < if ( -- addr old req)
+      nip 15 * 10 cells / 1+ cells ( -- addr new )
+      tuck mem_resize swap
+    else
+      drop
+    endif
   ;
   
 \ matrix

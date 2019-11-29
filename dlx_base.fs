@@ -31,6 +31,13 @@ require dlx_utils.fs
   
 \ Node Operations
   
+: link_self ( addr -- )
+  dup dup .left_field ! ( addr -- addr )
+  dup dup .right_field ! 
+  dup dup .up_field ! 
+  dup .down_field ! ( addr --  )
+  ;
+  
 \ insert n2 to right of n1
 : insert_right { n1 n2 -- }
   n1 n2 .left_field !
@@ -160,7 +167,7 @@ variable dlx_stats_cols_searched
 \  2drop 
   ;
 
-: collect_solution ( ... xi skip top -- ... xi skip len src )
+: collect_solution ( [x0 ... xi] skip top -- [x0 ... xi] skip len src )
   sp@ 2 cells + tuck - ( -- ... xi skip src sz )
   dup 1 cells / -rot ( -- ... xi skip len src sz )
   dup mem_alloc ( --- ... len src sz addr )
@@ -187,12 +194,44 @@ variable dlx_stats_cols_searched
   drop
 ;
   
+: row_is_blocked ( node -- flag )
+  dup .up .down over <> ( -- node flag)
+  swap .column dup .left .right <> ( -- flag flag)
+  or
+  ;
+  
+: set_choice ( dlx rid -- n )
+  dlx_get_row dup row_is_blocked if
+    s" partial solution is invalid" exception throw
+  endif
+  dup .column cover
+  dup cover_all
+  ;
+  
+: set_choices { dlx addr len -- }
+  len 0 ?do
+    dlx addr i cells + @ set_choice
+\    dup ." set " print_node cr
+  loop
+  ;
+  
 : dlx_solve { dlx report_solution_xt -- }
    
 \  dlx dlx_print_matrix
-   
+
   0 ( -- guard )
   sp@ { top }
+  
+  dlx .partial_solution_length 0<> if
+    dlx dup .partial_solution
+    over .partial_solution_length 
+    set_choices
+  endif
+  
+  \ otherwise will continue to search past provided solution and undo it
+  \ can surely be done better...
+  dup { end }
+  
   dlx best_column ( -- guard col ) 
   dup cover ( -- guard col ) \ remove column and all rows where == 1
   dup .down ( -- guard col n1 )
@@ -229,7 +268,7 @@ variable dlx_stats_cols_searched
     else ( -- ... n0 col n1 ) \ undo column choice
 \      cr ." <<back-up" 
       drop uncover ( -- ... n* n0 )
-      dup 0<> if \ not reached guard? 
+      dup end <> if \ not reached guard? 
         dup .column ( -- ... n* n0 col )
         over uncover_all ( -- ... n* n0 col )
         swap .down ( -- ... n* col n0') \ proceed to next on previous level

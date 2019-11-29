@@ -65,7 +65,10 @@ end-struct node_iter%
   ;
   
   
-: bin_arr_to_positions ( n arr -- n arr )
+: bin_arr_to_positions ( arr n -- arr n )
+
+  swap
+
   over cells mem_alloc 
   0 2swap swap ( n src dst --  dst 0 src n )
   0 ?do ( -- dst j src )
@@ -78,6 +81,8 @@ end-struct node_iter%
   loop
   drop tuck ( -- j dst j )
   cells mem_resize 
+  
+  swap
   ;
       
 \ --------- Collect cells from whole matrix ----------
@@ -144,11 +149,10 @@ end-struct node_iter%
   .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
    
 : print_cols ( dlx --  )  
-  dup .root 
-  swap .col_count 1+
+  dup .col_count
   0 ?do
-    dup print_column
-    column% %size +
+    dup i dlx_get_column
+    print_column
   loop
   drop ;
     
