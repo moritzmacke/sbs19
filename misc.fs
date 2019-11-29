@@ -113,3 +113,5 @@
 : print_matrix ( mat -- )
   dup .mat_row_count over .mat_col_count
   rot print_ch_mat ;
+
+." included misc.fs" cr

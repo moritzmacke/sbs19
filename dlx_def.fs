@@ -38,3 +38,5 @@ end-struct dlx%
   
 : .col_count ( addr -- n )
   .col_count_field @ ;
+  
+." included dlx_defs.fs" cr

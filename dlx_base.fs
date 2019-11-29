@@ -242,6 +242,33 @@ variable dlx_stats_cols_searched
   again
   s" shouldn't be here!" exception throw
   ;
-
+  
+  
+: dlx_solve_clean_code { dlx report_solution_xt -- }
+  0 sp@ { top }
+  dlx best_column 
+  dup cover dup .down 
+  begin 
+    2dup <> if 
+      dup cover_all 
+      dlx .root dup .right <> if 
+        nip dlx best_column         
+        dup cover dup .down 
+      else 
+        swap top collect_solution 
+        report_solution_xt execute
+        over uncover_all swap .down 
+      endif
+    else 
+      drop uncover 
+      dup 0<> if 
+        dup .column 
+        over uncover_all swap .down
+      else
+        drop exit
+      endif
+    endif
+  again
+  s" shouldn't be here!" exception throw ;
 
 ." included dlx_base.fs" cr
