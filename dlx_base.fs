@@ -162,12 +162,11 @@ variable dlx_stats_cols_searched
   2drop
   ;
   
-: report_solution ( len arr -- )
-  swap cells dump
-\  2drop 
+: solution_callback_template ( len arr -- flag )
+  swap cells dump -1
   ;
 
-: collect_solution ( [x0 ... xi] skip top -- [x0 ... xi] skip len src )
+: collect_solution ( [x0 ... xi] skip top -- [x0 ... xi] skip src len )
   sp@ 2 cells + tuck - ( -- ... xi skip src sz )
   dup 1 cells / -rot ( -- ... xi skip len src sz )
   dup mem_alloc ( --- ... len src sz addr )
@@ -175,7 +174,7 @@ variable dlx_stats_cols_searched
     over i + @ .row_idx 
     over i + !
   cell +loop
-  nip
+  nip swap
   ;
   
 : report ( col addr -- col addr )
@@ -208,11 +207,29 @@ variable dlx_stats_cols_searched
   dup cover_all
   ;
   
-: set_choices { dlx addr len -- }
+: set_choices { dlx addr len -- [c0 ... cn] }
   len 0 ?do
     dlx addr i cells + @ set_choice
 \    dup ." set " print_node cr
   loop
+  ;
+  
+: unset_choices ( [0 .. cx] -- 0 )
+  begin
+    dup 0<> while ( -- ci )
+    dup uncover_all
+    .column uncover
+  repeat
+  ;
+  
+: set_partial_solution ( dlx -- [c0 ... cn] )
+  dup .partial_solution_length 
+  dup 0<> if ( -- dlx len )
+    over .partial_solution swap ( -- dlx addr len )
+    set_choices
+  else
+    2drop
+  endif
   ;
   
 : dlx_solve { dlx report_solution_xt -- }
@@ -221,59 +238,50 @@ variable dlx_stats_cols_searched
 
   0 ( -- guard )
   sp@ { top }
-  
-  dlx .partial_solution_length 0<> if
-    dlx dup .partial_solution
-    over .partial_solution_length 
-    set_choices
-  endif
+ 
+  dlx set_partial_solution ( -- [c0 .. cn] )
+
   
   \ otherwise will continue to search past provided solution and undo it
   \ can surely be done better...
   dup { end }
-  
+
   dlx best_column ( -- guard col ) 
   dup cover ( -- guard col ) \ remove column and all rows where == 1
   dup .down ( -- guard col n1 )
   
   begin ( -- ... n0 col n1 )
-    
-\    report
-\    dlx dlx_print_matrix
-
-\   print_path
-  
     2dup <> if \ not yet back at column head? -> haven't tried all rows yet
 \      cr ." >>deeper" 
-      dup cover_all ( -- ... n0 col n1 ) \ eliminate current row
-\      dlx dlx_print_matrix
-      
+      dup cover_all ( -- ... n0 col n1 ) \ eliminate current row     
       dlx .root dup .right <> if \ test whether matrix not empty
-      
-\        dlx print_active_cols
-      
-        nip dlx best_column ( -- ... n0 n1 col ) \ no, then proceed to next column
-        
-\        dup print_node_full
-        
+        nip dlx best_column ( -- ... n0 n1 col ) \ no, then proceed to next column      
         dup cover ( -- ... n0 n1 col ) 
         dup .down ( -- ... n1 col n2 ) 
       else \ empty
         cr ." found solution" cr
-        swap top collect_solution ( -- ... n0 n1 col len arr )
-        report_solution_xt execute ( -- ... n0 n1 col )
-        over uncover_all ( -- ... n0 n1 col ) \ undo choice
-        swap .down ( -- ... n0 col n1' ) \ proceed to next on same column
+        swap top collect_solution ( -- ... n0 n1 col arr len )
+        report_solution_xt execute ( -- ... n0 n1 col flag )
+        if \ search next solution?
+          ." continuing search" cr
+          over uncover_all ( -- ... n0 n1 col ) \ undo choice
+          swap .down ( -- ... n0 col n1' ) \ proceed to next on same column
+        else
+          ." aborting search" cr
+          drop unset_choices drop
+          exit
+        endif
       endif
     else ( -- ... n0 col n1 ) \ undo column choice
 \      cr ." <<back-up" 
       drop uncover ( -- ... n* n0 )
-      dup end <> if \ not reached guard? 
+      dup end <> if \ not reached top? 
         dup .column ( -- ... n* n0 col )
         over uncover_all ( -- ... n* n0 col )
         swap .down ( -- ... n* col n0') \ proceed to next on previous level
-      else ( -- guard )
-        drop
+      else ( -- [0 ... cx] )
+        ." done" cr
+        unset_choices drop
 \        dlx dlx_print_matrix
         exit \ this exits whole definition, don't know how to break loop otherwise
       endif

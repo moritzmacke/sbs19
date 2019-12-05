@@ -14,9 +14,11 @@ matrix[
 
 create test_sol001 1 , 5 ,
 
+variable continue_search
+-1 continue_search !
 
-: process_solution ( len arr -- )
-  swap 0 ?do ( -- arr )
+: process_solution ( arr len -- flag )
+  0 ?do ( -- arr )
     dup i cells + @ dup . ." :" ( -- arr rid )
     test_mat001 tuck swap  ( -- arr m m rid )  
     mat_get_row swap .mat_col_count  ( -- arr row rl )
@@ -27,12 +29,13 @@ create test_sol001 1 , 5 ,
     drop
     cr
   loop
-  drop
+  drop continue_search @ \ continue
   ;
 
 : test
   dlx_init
   dup test_mat001 dlx_read_matrix
+  -1 continue_search !
   ['] process_solution dlx_solve
   ;
   
@@ -40,6 +43,13 @@ create test_sol001 1 , 5 ,
   dlx_init
   dup test_mat001 dlx_read_matrix
   dup test_sol001 2 dlx_set_partial_solution 
+  -1 continue_search !
   ['] process_solution dlx_solve
   ;
   
+: test_one_solution
+  dlx_init
+  dup test_mat001 dlx_read_matrix
+  0 continue_search !
+  ['] process_solution dlx_solve
+  ;

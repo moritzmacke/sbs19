@@ -49,6 +49,18 @@ require dlx_utils.fs
 : dlx_free ( dlx -- )
   
   ;
+  
+\ TODO
+: reset_rows ( )
+  ;
+  
+: reset_columns ( addr -- )
+
+  ;
+  
+: dlx_reset ( dlx -- )
+
+  ;
     
 : resize_cols ( dlx cols -- )
   cells 2dup over 
@@ -127,6 +139,10 @@ require dlx_utils.fs
     i -rot dlx_add_row 
   loop
   2drop
+  ;
+  
+: dlx_read_compact ( dlx -- )
+  
   ;
   
 : dlx_set_partial_solution ( dlx addr len -- )
@@ -223,15 +239,16 @@ test_matrix1 test_vmatrix !
   cr
   drop sav unallot_above
 ;
-  
-: process_solution2 ( len arr -- )
-  test_matrix -rot
+    
+: process_solution2 ( arr len -- flag)
+  test_matrix -rot swap
   build_solution_rows ( -- arr2 rows rl )
   validate_solution
+  -1
   ;
   
-: process_solution ( len arr -- )
-  swap 0 ?do ( -- arr )
+: process_solution ( arr len -- flag )
+  0 ?do ( -- arr )
     dup i cells + @ dup . ( -- arr rid )
     test_matrix tuck swap  ( -- arr m m rid )  
     mat_get_row swap .mat_col_count  ( -- arr row rl )
@@ -242,7 +259,7 @@ test_matrix1 test_vmatrix !
     drop
     cr
   loop
-  drop
+  drop -1
   ;
 
 : testalg ( dlx -- )

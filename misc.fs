@@ -64,7 +64,7 @@ variable mem_stat_frees
 \ matrix
 
   
-\ create empty matrix
+\ create empty char matrix
 : allot_matrix { rows cols }
   rows cols * chars 2 cells + allot_empty
   rows over ! cell+ cols over ! cell+
@@ -91,6 +91,11 @@ variable mem_stat_frees
 
 : mat_get_row ( mat row -- addr )
   over .mat_col_count * chars + ;
+  
+: mat_get_row_arr ( mat row -- addr len )
+  over .mat_col_count tuck ( -- mat len row len )
+  * chars rot + swap
+  ;
 
 :  matrix[ ( rows cols -- addr )
    swap , , here ;
@@ -107,18 +112,27 @@ variable mem_stat_frees
   does>
     @
   ;
+  
+\ -- array
 
+: arr_for_all ( addr n xt -- )
+  swap 0 ?do ( -- addr xt )
+    over i cells + @ over execute
+  loop
+  2drop
+  ;
+  
+: ch_arr_for_all ( addr n xt -- )
+  swap 0 ?do ( -- addr xt )
+    over i chars + c@ over execute
+  loop
+  2drop
+  ;
 
 \ ----------------------------------- Print -----------------------------------
   
-: print_ch_arr ( n addr -- )
-  cr
-  swap 0 ?do
-    dup c@ .
-    char+
-  loop
-  drop cr
-  ;
+: print_ch_arr ( addr n -- )
+  ['] . ch_arr_for_all cr ;
   
 \ 
 : print_ch_mat ( n n addr -- )

@@ -84,7 +84,8 @@ end-struct node_iter%
   
   swap
   ;
-      
+
+  
 \ --------- Collect cells from whole matrix ----------
 
 : list_cells_iter_has_next_xt ( iter -- flag )
@@ -147,14 +148,10 @@ end-struct node_iter%
   
 : print_active_cols ( dlx -- )
   .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
-   
-: print_cols ( dlx --  )  
-  dup .col_count
-  0 ?do
-    dup i dlx_get_column
-    print_column
-  loop
-  drop ;
+    
+: print_cols ( dlx -- )
+  dup .col_array swap .col_count ['] print_column arr_for_all
+  ;
     
 \ ----------- printing the sparse matrix -------------
               
@@ -229,11 +226,8 @@ end-struct node_iter%
 : fill_matrix { root rows cols -- n n addr }
     here
     root rows cols mark_active_cells ( -- addr mat )
-\    dup rows cols rot print_ch_mat cr
     root rows mark_active_rowsx rot ( -- addr nar rs mat )
-\    over rows swap print_ch_arr
     root cols mark_active_colsx ( -- addr nar rs mat nac cs )
-\    cols over print_ch_arr
     2swap -rot swap ( -- addr nar nac mat rs cs )    
     rows cols compress_matrix ( -- addr nar nac n mat )
     swap 2over ( -- addr nar nac mat n nar nac )
