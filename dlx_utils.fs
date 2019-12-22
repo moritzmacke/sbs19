@@ -87,36 +87,28 @@ end-struct node_iter%
 
   
 \ --------- Collect cells from whole matrix ----------
-
-: list_cells_iter_has_next_xt ( iter -- flag )
-    .node_iter_next @ .row_idx -1 <> ;
-
-: find_next_node ( cur -- nxt )
+ 
+: node_is_head? ( addr -- flag )
+  .row_idx -1 = ;
+  
+: node_is_root? ( addr -- flag )
+  dup node_is_head? if
+    .col_idx -1 =
+  else 
+    drop false
+  endif
+  ;
+  
+: all_cells_next ( cur -- nxt )
   begin
-    .down dup .col_idx ( -- nxt cid )
-    -1 <> ( -- nxt flag ) \ stop at root
-    over .row_idx -1 = and \ or when row node found
-    while ( -- nxt ) \ head
+    .down dup node_is_head? if
       .right
-  repeat
+    else
+      exit
+    endif
+    dup node_is_root?
+  until
   ;
-  
-: list_cells_iter_next_xt ( iter -- addr )
-  dup list_cells_iter_has_next_xt invert if s" " exception throw endif
-  dup .node_iter_next @ tuck ( -- cur iter cur )
-  find_next_node ( -- cur iter nxt )
-  swap .node_iter_next !
-  ;
-
-\ call on root to collect all active cells
-: list_cells_iter ( root -- iter )
-  node_iter% %mem_alloc swap
-  .right find_next_node ( -- iter nxt )
-  over .node_iter_next ! ( -- iter )
-  ['] list_cells_iter_next_xt over .iter_next_xt !
-  ['] list_cells_iter_has_next_xt over .iter_has_next_xt !
-  ;
-  
   
 \ ------------------------------- Printing etc --------------------------------
 
@@ -139,109 +131,95 @@ end-struct node_iter%
   ." , len:" .length .
   ." }" ;
 
-
-: print_active_nodes ( dlx -- )
-  .root list_cells_iter ['] print_node for_all ;
-   
-: print_active_nodes_full ( dlx -- )
-  .root list_cells_iter ['] print_node_full for_all ;
-  
+    
 : print_active_cols ( dlx -- )
   .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
     
 : print_cols ( dlx -- )
   dup .col_array swap .col_count ['] print_column arr_for_all
   ;
+  
+  
+: print_active_nodes ( dlx -- )
+  .root 
+  begin
+    all_cells_next
+    dup node_is_root? false =
+    while dup print_node
+  repeat
+  drop
+  ;
     
 \ ----------- printing the sparse matrix -------------
-              
-: mark_active_colsx ( addr n -- n addr )
-  chars allot_empty 0 -rot ( root cols  -- n root cs )
-  begin
-    swap .right tuck ( -- n cur cs cur )
-    .col_idx ( -- n cur cs cid )
-    dup 0 >= if
-      chars over + ( -- n cur cs off )
-      1 swap c! ( -- n cur cs )
-      rot 1+ -rot ( -- n cur cs )
-      0
-    else \ how to do this loop right?
-      drop -1
-    endif
-  until
-  nip
-  ;  
-  
-: mark_active_rowsx ( addr n -- n addr )
-  chars allot_empty 0 -rot ( root rows -- n root rs )
-  swap list_cells_iter swap ( -- n iter rs )
-  begin
-    over iter_next?
-    while
-    over iter_next .row_idx ( -- n iter rs rid )
-    chars over + ( -- n iter rs off )  
-    dup c@ 
-    0= if ( -- n iter rs off )  
-      1 swap c! ( -- n iter rs )
-      rot 1+ -rot ( -- n iter rs )    
-    else
-      drop
-    endif
-  repeat
-  nip
+
+: mark_row_active ( mat row -- )
+  3 -rot 0 mat_set
   ;
   
-: mark_active_cells ( addr n n -- addr ) 
-  tuck >r * alloc_empty ( root rows cols -- root mat ; R:cols )
-  swap list_cells_iter swap ( -- iter mat ; R:cols)
-  begin
-    over iter_next?
-    while
-    over iter_next dup ( -- iter mat nxt nxt ; R:cols)
-    .row_idx r@ * ( -- iter mat nxt roff ; R:cols)
-    swap .col_idx + ( -- iter mat off ; R:cols)
-    over + 1 swap c! ( -- iter mat ; R:cols)
-  repeat
-  nip rdrop
+: mark_col_active ( mat col -- )
+  1+ 3 -rot over .mat_row_count 1- swap mat_set
   ;
 
-: compress_matrix { mat rs cs rows cols -- n mat }
-  mat rows 0 ?do ( -- ci )
-    rs i chars + c@ 1 = ( -- ci flag) \ active row
-    if
-    cols 0 ?do ( -- ci )
-      cs i chars + c@ 1 = ( -- ci flag) \ i != i in outer loop
-      if \ active column
-        j cols * i + chars ( -- ci moff )
-        mat + c@ ( -- ci src )
-        over c! ( -- ci )
-        1+
-      endif
-    loop
+: set_cell ( mat cel -- )
+  1 -rot dup .row_idx swap .col_idx 1+ mat_set 
+  ;
+  
+: mark_active_cells ( dlx -- )
+  dup .row_count 1+ over .col_count 1+ alloc_matrix ( -- dlx mat )
+  swap .root
+  begin ( -- mat cel )
+    all_cells_next
+    dup node_is_root? invert 
+    while
+      2dup .row_idx mark_row_active
+      2dup .col_idx mark_col_active
+      2dup set_cell
+  repeat
+  drop
+  ;
+  
+: col_marked_active? ( mat n -- )
+  over .mat_row_count 1- swap mat_get 0<>
+  ;
+  
+: row_marked_active? ( mat n -- )
+  0 mat_get 0<> ;
+  
+: process_row { oarr mat r }
+  oarr mat .mat_col_count ( -- oarr n )
+  1 ?do ( -- oarr )
+    mat i col_marked_active? if
+      mat r i mat_get
+      over c! char+
     endif
   loop
-  mat - mat
   ;
-    
-: fill_matrix { root rows cols -- n n addr }
-    here
-    root rows cols mark_active_cells ( -- addr mat )
-    root rows mark_active_rowsx rot ( -- addr nar rs mat )
-    root cols mark_active_colsx ( -- addr nar rs mat nac cs )
-    2swap -rot swap ( -- addr nar nac mat rs cs )    
-    rows cols compress_matrix ( -- addr nar nac n mat )
-    swap 2over ( -- addr nar nac mat n nar nac )
-    * tuck <> if s" wrong size" exception throw endif ( -- ... mat sz )
-    mem_resize 2swap swap ( addr nar nac mat -- nac mat nar addr )
-    unallot_above -rot ( -- nar nac mat )
-    ;
-    
-    
+  
+: compress_matrix { mat -- mat }
+  0 mat ( -- rs mat )
+  mat .mat_row_count 1- 0 
+  ?do ( -- rs marr )
+    mat i row_marked_active? if
+      mat i process_row  ( -- rs marr )
+      swap 1+ swap
+    endif
+  loop 
+  over 0 = if
+    2drop 0 0
+  else
+    mat - over / ( -- rs cs )
+  endif
+  
+  mat -rot
+  resize_matrix
+;
+  
+  
 : dlx_print_matrix ( dlx -- )
-  dup .root over .row_count ( -- dlx root rows)
-  rot .col_count
-  fill_matrix ( -- r c m )
-  >r r@ print_ch_mat r> mem_free 
+  mark_active_cells 
+  compress_matrix
+  dup print_matrix
+  free_matrix
   ;
   
 ." included dlx_utils.fs" cr

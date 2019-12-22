@@ -2,6 +2,7 @@
 
 struct
   cell% field .row_idx_field
+  cell% field .col_idx_field
   cell% field .column_field
   cell% field .left_field
   cell% field .right_field
@@ -10,7 +11,6 @@ struct
 end-struct node%
 
 node%
-  cell% field .col_idx_field
   cell% field .length_field
 end-struct column%
  

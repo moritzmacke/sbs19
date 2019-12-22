@@ -312,6 +312,9 @@ variable dlx_stats_cols_searched
 
   dlx next_column   
   begin ( -- ... n0 col n1 )
+  
+    dlx dlx_print_matrix
+  
     2dup <> if                                  \ see if back at column head
       dup cover_all ( -- ... n0 col n1 )        \ otherwise eliminate current row
       dlx columns_empty? if                     \ if matrix empty we have solution

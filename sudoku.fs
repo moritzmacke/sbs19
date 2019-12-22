@@ -25,6 +25,8 @@ constant sudo_constraints
 sudo_rows sudo_cols * sudo_nums *
 constant sudo_choices 
 
+\ -------------------------- constraint computations --------------------------
+
 : choice_number ( row col num -- n )
   rot sudo_rows * ( -- col num n)
   rot + sudo_cols * + ( -- n )
@@ -73,7 +75,7 @@ constant sudo_choices
   r c n cel_constraint
   ;
   
-\ ---------------------------- printing -----------------------------
+\ --------------------------------- printing ----------------------------------
   
 : emit_hline 0x2500 xemit ;
 : emit_vline 0x2502 xemit ;

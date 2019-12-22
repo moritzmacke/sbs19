@@ -74,6 +74,14 @@ variable mem_stat_frees
   rows cols * chars 2 cells + allot_empty
   rows over ! cell+ cols over ! cell+
   ;
+  
+: alloc_matrix { rows cols }
+  rows cols * chars 2 cells + alloc_empty ( -- addr )
+  rows over ! cell+ cols over ! cell+
+  ;
+  
+: free_matrix ( addr -- )
+  2 cells - mem_free ;
 
 : .mat_col_count ( mat -- u )
   1 cells - @ ;
@@ -102,6 +110,12 @@ variable mem_stat_frees
   * chars rot + swap
   ;
 
+: resize_matrix { mat rows cols -- mat }
+  mat 2 cells - rows cols * chars
+  2 cells + mem_resize ( -- addr )
+  rows over ! cell+ cols over ! cell+
+  ;
+  
 :  matrix[ ( rows cols -- addr )
    swap , , here ;
    
