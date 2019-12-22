@@ -1,46 +1,8 @@
 require dlx_base.fs 
-require myiter.fs 
 
-
-\ ------------------------------- Node Iterator -------------------------------
+\ --------------------------------------------
   
-  
-: col_arr_iter ( n addr -- iter )
-  column% %size swap arr_ptr_iter
-  ;
-  
-iter%
-  cell% field .node_iter_next
-  cell% field .node_iter_end
-end-struct node_iter%
-
-: node_iter_has_next_xt ( iter -- )
-    .node_iter_next @ 0<>
-    ;
-  
-: node_lr_iter_next_xt { iter -- }
-  iter .node_iter_next dup @ tuck ( -- nxt *nxt nxt )
-  0= if ( -- nxt *nxt)
-    s" No more items." exception throw 
-  endif
-  over iter .node_iter_end @  ( -- nxt *nxt nxt end )
-    = if ( -- nxt *nxt ) \ this was last node
-    0 swap ! ( -- nxt )
-  else
-    over .right swap ! ( -- nxt )
-  endif
-  ; 
-
-\ from to inclusive
-: node_lr_iter { s e -- iter }
-  node_iter% iter_create
-  s over .node_iter_next ! ( iter -- iter )
-  e over .node_iter_end !
-  ['] node_iter_has_next_xt over .iter_has_next_xt !
-  ['] node_lr_iter_next_xt over .iter_next_xt !
-  ;
-  
-  
+\ TODO for all in row etc..
 \ no iter for now...
 \ from to exclusive
 \ not worth it?
@@ -131,13 +93,14 @@ end-struct node_iter%
   ." , len:" .length .
   ." }" ;
 
+ 
+\ TODO
+\ : print_active_cols ( dlx -- )
+\   .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
     
-: print_active_cols ( dlx -- )
-  .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
-    
-: print_cols ( dlx -- )
-  dup .col_array swap .col_count ['] print_column arr_for_all
-  ;
+\ : print_cols ( dlx -- )
+\   dup .col_array swap .col_count ['] print_column arr_for_all
+\  ;
   
   
 : print_active_nodes ( dlx -- )

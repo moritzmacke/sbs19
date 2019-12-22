@@ -1,4 +1,3 @@
-require myiter.fs
 require dlx_base.fs  
 require dlx_utils.fs 
 
