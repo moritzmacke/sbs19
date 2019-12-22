@@ -120,6 +120,16 @@ variable mem_stat_frees
   
 \ -- array
 
+: arr_for_all_ptrs ( addr n xt -- )
+  swap 0 ?do ( -- addr xt )
+    over i cells + over execute
+  loop
+  ;
+  
+: @arr_for_all ( addr n xt -- )
+  \ ? ['] @ 
+  ;
+
 : arr_for_all ( addr n xt -- )
   swap 0 ?do ( -- addr xt )
     over i cells + @ over execute

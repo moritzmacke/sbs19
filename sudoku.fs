@@ -73,25 +73,33 @@ constant sudo_choices
   r c n cel_constraint
   ;
   
+\ ---------------------------- printing -----------------------------
+  
+: emit_hline 0x2500 xemit ;
+: emit_vline 0x2502 xemit ;
+: emit_cross 0x253c xemit ;
+  
+: emit_lt 0x251c xemit ;
+: emit_rt 0x2524 xemit ;
+: emit_tt 0x252c xemit ;
+: emit_bt 0x2534 xemit ;
+  
+: emit_tlc 0x250c xemit ;
+: emit_trc 0x2510 xemit ;
+: emit_blc 0x2514 xemit ;
+: emit_brc 0x2518 xemit ;
+  
+: type_hline ( n -- )
+  0 ?do emit_hline loop
+  ;
+  
 : print_arr ( addr n -- )
   0 ?do
     dup i cells + @ .
   loop
   drop cr
   ;
-  
-: test_gen_mrows ( -- )
-  sudo_rows 0 ?do
-    sudo_cols 0 ?do
-      sudo_nums 0 ?do
-        k j i gen_mrow_for
-        sp@ 4 print_arr 
-        2drop 2drop
-      loop
-    loop
-  loop
-  ;
-   
+    
 : sudo_print_number ( c -- )
   dup 0<> if
     .
@@ -100,13 +108,47 @@ constant sudo_choices
   endif
   ;
 
+: sudo_print_row ( addr n -- )
+  0 ?do ( -- addr )
+    i 3 mod 0 = if
+      emit_vline 0x20 emit
+    endif
+    dup i chars + c@ sudo_print_number
+  loop drop
+  emit_vline
+  ;
+  
+: print_top_line
+  emit_tlc
+  7 type_hline emit_tt
+  7 type_hline emit_tt
+  7 type_hline emit_trc cr
+  ;
+  
+: print_btm_line
+  emit_blc
+  7 type_hline emit_bt
+  7 type_hline emit_bt
+  7 type_hline emit_brc cr
+  ;
+  
 : sudo_print_puzzle ( mat -- )
-  cr dup .mat_row_count 0 ?do
+  cr print_top_line
+  dup .mat_row_count 0 ?do
     dup i mat_get_row_arr
-    ['] sudo_print_number ch_arr_for_all cr
+    sudo_print_row cr
+    i 2 = i 5 = or if
+      emit_lt
+      7 type_hline emit_cross
+      7 type_hline emit_cross
+      7 type_hline emit_rt cr
+    endif
   loop
+  print_btm_line
   drop
   ;
+   
+\ ---------------------------------------------------------
    
 : sudo_load_mrows { dlx -- }
   sudo_rows 0 ?do
