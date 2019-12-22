@@ -24,6 +24,11 @@ variable mem_stat_frees
   mem_stat_allocs increment
   ;
   
+: %mem_alloc ( n n -- addr )
+  %alloc
+  mem_stat_allocs increment
+  ;
+  
 : mem_resize ( addr n -- addr )
   dup 1 cells > if
     resize 0<> if s" memory error" throw endif

@@ -22,17 +22,17 @@ require dlx_utils.fs
   ;
   
 : new_node ( col idx -- addr )
-  node% %alloc init_node ;
+  node% %mem_alloc init_node ;
   
 : new_column ( dlx idx -- addr )
-  column% %alloc init_column ;
+  column% %mem_alloc init_column ;
     
 1 constant initial_col_capacity
 1 constant initial_row_capacity
   
 \ empty
 : dlx_init ( -- dlx )
-    dlx% %alloc ( -- addr ) \ hope that works out with alignment
+    dlx% %mem_alloc ( -- addr ) 
     0 over .row_count_field !
     0 over .col_count_field !
     0 over .partial_solution_field !
@@ -67,64 +67,62 @@ require dlx_utils.fs
   .col_array swap ( dlx sz dlx arr sz )
   mem_resize ( -- dlx sz dlx arr )
   swap .col_array_field ! ( -- dlx sz )
-\  dup ." new csize " . cr
   swap .col_array_capacity_field !
   ;
   
-\ if not present
-: add_column ( dlx cid -- )
-  over .col_count 2dup >= if ( -- dlx cid cols )
-    -rot 2dup 1+ ( -- cols dlx cid dlx ncols)   
-    resize_cols ( -- cols dlx cid )
-    2dup 1+ swap .col_count_field ! ( -- cols dlx cid ) 
-    rot ( -- dlx cid cols )
-    begin
-        2dup >= while 
-        rot 2dup 2dup dup .root -rot ( -- cid cols dlx cols dlx root cols dlx )
-        swap new_column ( -- cid cols dlx cols dlx root addr )
-        tuck insert_left ( -- cid cols dlx cols dlx addr )
-        rot swap dlx_set_column ( -- cid cols dlx )
-        -rot 
-\        dup ." added col" . cr
-        1+
-    repeat
+  
+: set_cols_upto ( dlx cid -- )
+  1+ over .col_count ?do ( -- dlx)
+    dup dup .root over i new_column ( -- dlx dlx root addr )
+    tuck insert_left ( -- dlx dlx addr )
+    i swap dlx_set_column ( -- dlx)
+  loop drop 
+  ;
+  
+\ add if not present
+: set_column ( dlx cid -- )
+  2dup swap .col_count >= if ( -- dlx cid )
+    2dup 1+ resize_cols ( -- dlx cid )   
+    2dup set_cols_upto ( -- dlx cid ) 
+    1+ swap .col_count_field ! ( -- )
+  else
+    2drop
   endif
-  2drop drop
   ;
   
 \ Insert rows...
 
-: add_cell ( head node -- )
+: col_add_cell ( head node -- )
   over .length_field increment
   insert_up
   ;
 
 \ dyn_resize ( addr n1 n2 -- addr n1/n3 )
   
-: add_to_rows { dlx r rid -- }
-  dlx .row_array dlx .row_array_capacity rid 1+ cells dyn_resize ( -- addr sz )
+: add_to_rows { dlx cel -- }
+  dlx .row_array dlx .row_array_capacity 
+  cel .row_idx 1+ cells dyn_resize ( -- addr sz )
   dlx .row_array_capacity_field !
   dup dlx .row_array_field ! ( -- addr )
-  rid cells + r swap !
+  cel tuck .row_idx cells + !
   ;
   
-: dlx_add_row { dlx rname arr len -- }
-  dlx .row_count { rid }
-  dlx arr @ 2dup add_column ( -- dlx cid )
-  over swap dlx_get_column ( -- dlx col)
-  dup rid new_node ( -- dlx col fst )
-  tuck add_cell ( -- dlx fst )
-  2dup rid add_to_rows ( -- dlx fst )
-\  dup ." added " print_node_full
-
-  over .row_count_field increment
-  len 1 ?do ( -- dlx fst )
-    over arr i cells + @ 2dup add_column ( -- dlx fst dlx cid )
-    dlx_get_column ( -- dlx fst col )
-    dup rid new_node ( -- dlx fst col nn )
-    tuck add_cell ( -- dlx fst nn )
+  
+: row_new_cell { dlx rid cid -- cel }
+  dlx cid 2dup set_column dlx_get_column ( -- caddr )
+  dup rid new_node ( -- caddr naddr )
+  tuck col_add_cell
 \    dup ." added " print_node_full
-    over swap insert_left ( -- dlx fst)    
+  ;
+    
+: dlx_add_row { dlx rname arr len -- }
+  dlx dup 2dup .row_count ( -- dlx dlx dlx rid )
+  arr @ row_new_cell { fst } ( -- dlx dlx )
+  fst add_to_rows ( -- dlx )
+  dup .row_count_field increment
+  fst len 1 ?do ( -- dlx fst )
+    2dup tuck .row_idx arr i cells + @ row_new_cell ( -- dlx fst fst cel )
+    insert_left
   loop
   2drop
   ;
@@ -206,8 +204,7 @@ test_matrix1 test_vmatrix !
 : build_solution_rows { mat rows arr1 -- arr2 rows rl }
   rows cells mem_alloc ( -- arr2 )
   rows 0 ?do
-    mat arr1 i cells + 
-    @ ( -- arr2 mat rid )
+    mat arr1 i cells + @ ( -- arr2 mat rid )
     mat_get_row over i cells + !    
   loop
   rows mat .mat_col_count

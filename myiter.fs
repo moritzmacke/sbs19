@@ -29,7 +29,7 @@ variable iter_freed_count
   ;
 
 : iter_create ( n n -- addr )
-  %alloc
+  %mem_alloc
   dup .iter_free_xt ['] iter_internal_free swap !
   iter_created_count increment
   ;

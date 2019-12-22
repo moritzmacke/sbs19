@@ -177,12 +177,6 @@ variable dlx_stats_cols_searched
   nip swap
   ;
   
-: report ( col addr -- col addr )
-  cr
-  ." column is " over .col_idx .
-  ." node is " dup .row_idx . dup .col_idx . 
-  ;
-  
 : print_path ( [n0 ... xi] col n -- [n0 ... xi] col n )
   sp@ 2 cells +
   begin

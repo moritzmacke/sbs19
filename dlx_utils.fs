@@ -110,7 +110,7 @@ end-struct node_iter%
 
 \ call on root to collect all active cells
 : list_cells_iter ( root -- iter )
-  node_iter% %alloc swap
+  node_iter% %mem_alloc swap
   .right find_next_node ( -- iter nxt )
   over .node_iter_next ! ( -- iter )
   ['] list_cells_iter_next_xt over .iter_next_xt !
@@ -232,8 +232,7 @@ end-struct node_iter%
     rows cols compress_matrix ( -- addr nar nac n mat )
     swap 2over ( -- addr nar nac mat n nar nac )
     * tuck <> if s" wrong size" exception throw endif ( -- ... mat sz )
-    mem_resize 
-    2swap swap ( addr nar nac mat -- nac mat nar addr )
+    mem_resize 2swap swap ( addr nar nac mat -- nac mat nar addr )
     unallot_above -rot ( -- nar nac mat )
     ;
     
