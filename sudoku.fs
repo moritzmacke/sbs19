@@ -29,51 +29,42 @@ constant sudo_choices
 
 : choice_number ( row col num -- n )
   rot sudo_rows * ( -- col num n)
-  rot + sudo_cols * + ( -- n )
-  ;
+  rot + sudo_cols * + ; ( -- n )
   
 : row_of_choice ( n -- n )
-  sudo_cols sudo_nums * /
-  ;
+  sudo_cols sudo_nums * / ;
   
 : col_of_choice ( n -- n )
   dup sudo_cols sudo_nums * / 
   sudo_cols sudo_nums * *
-  - sudo_nums /
-  ;
+  - sudo_nums / ;
   
 : num_of_choice ( n -- n )
-  sudo_nums mod
-  ;
+  sudo_nums mod ;
 
 : cel_constraint ( row col num -- n )
   drop swap sudo_cols * +
-  sudo_cel_con_off +
-  ;
+  sudo_cel_con_off + ;
   
 : row_constraint ( row col num -- n )
   nip swap sudo_nums * +
-  sudo_row_con_off +
-  ;
+  sudo_row_con_off + ;
   
 : col_constraint ( row col num -- n )
   swap sudo_nums * + nip
-  sudo_col_con_off +
-  ;
+  sudo_col_con_off + ;
   
 : blk_constraint ( row col num -- n )
   rot sudo_blocks_v / sudo_blocks_h * ( -- col num n )
   rot sudo_blocks_h / + ( -- num n )
-  sudo_nums * + sudo_blk_con_off +
-  ;
+  sudo_nums * + sudo_blk_con_off + ;
 
 \ put on stack in descending order -> ascending in memory
 : gen_mrow_for { r c n -- n n n n }
   r c n blk_constraint
   r c n col_constraint
   r c n row_constraint
-  r c n cel_constraint
-  ;
+  r c n cel_constraint ;
   
 \ --------------------------------- printing ----------------------------------
   

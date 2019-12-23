@@ -60,6 +60,8 @@ require dlx_utils.fs
 : dlx_reset ( dlx -- )
 
   ;
+  
+\ Inserting columns
     
 : resize_cols ( dlx cols -- )
   cells 2dup over 
@@ -126,7 +128,7 @@ require dlx_utils.fs
   2drop
   ;
 
-\
+\ Reading in matrix of 1s and 0s
 
 : dlx_read_matrix ( dlx mat -- )
   dup .mat_row_count

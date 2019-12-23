@@ -18,14 +18,12 @@ require dlx_utils.fs
   ;
   
 : restore_up_down ( n -- )
-  dup ( -- n n )
-  dup .up .down_field ! ( -- n )
+  dup dup .up .down_field ! ( -- n )
   dup .down .up_field ! ( -- )
   ;
   
 : restore_left_right ( n -- )
-  dup ( -- n n )
-  dup .left .right_field ! ( -- n )
+  dup dup .left .right_field ! ( -- n )
   dup .right .left_field ! ( -- )
   ;
   
@@ -39,13 +37,6 @@ require dlx_utils.fs
   ;
   
 \ now with macros...  
-
-\ insert n2 above n1
-: insert_upx { n1 n2 -- }
-  n1 n2 .down_field !
-  n1 .up n2 .up_field !
-  n2 n1 .up .down_field !
-  n2 n1 .up_field ! ;
   
 : insert_upxx ( n1 n2 -- )
   2dup .down_field !                       \ n2.down = n1
@@ -101,22 +92,20 @@ require dlx_utils.fs
 \ Row Operations
   
 : block_row ( addr -- )
-  [ ' .right ' block_node ] [apply_exclusive] 
-  ;
+  [ ' .right ' block_node ] [apply_exclusive] ;
   
 : unblock_row ( addr -- )
-  [ ' .left ' unblock_node ] [apply_exclusive] 
-  ;
+  [ ' .left ' unblock_node ] [apply_exclusive] ;
+  
+\ Cover, uncover
   
 : cover ( addr -- )
   dup unlink_left_right
-  [ ' .down ' block_row ] [apply_exclusive] 
-  ;
+  [ ' .down ' block_row ] [apply_exclusive] ;
   
 : uncover ( addr -- )
   dup [ ' .up ' unblock_row ] [apply_exclusive]
-  restore_left_right
-  ;
+  restore_left_right ;
   
 : .column+cover .column cover ; 
 
@@ -127,72 +116,6 @@ require dlx_utils.fs
   
 : uncover_all ( addr --)
   [ ' .left ' .column+uncover ] [apply_exclusive] ;
-  
-\ without macro
-  
-: block_rowx ( addr -- )
-  dup .right
-  begin
-    2dup <> while ( -- n r)
-    dup block_node
-    .right
-  repeat
-  2drop
-  ;
-  
-: unblock_rowx ( addr -- )
-  dup .left
-  begin
-    2dup <> while
-    dup unblock_node
-    .left
-  repeat
-  2drop
-  ;
-   
-\ Cols
-
-: coverx ( addr -- )
-  dup unlink_left_right
-  dup .down ( -- head cur )
-  begin
-    2dup <> while
-    dup block_row
-    .down
-  repeat
-  2drop
-  ;
-  
-: uncoverx ( addr -- )
-  dup .up ( -- head cur )
-  begin
-    2dup <> while
-    dup unblock_row
-    .up
-  repeat
-  drop
-  restore_left_right
-  ;
-  
-: cover_allx ( addr -- )
-    dup .right ( -- n1 nr )
-    begin
-      2dup <> while
-      dup .column cover
-      .right
-    repeat
-    2drop
-  ;
-  
-: uncover_allx ( addr --)
-  dup .left ( -- n1 nl )
-  begin
-    2dup <> while
-    dup .column uncover
-    .left
-  repeat
-  2drop
-  ;
   
 \ --------------------------------- Algorithm ---------------------------------
 

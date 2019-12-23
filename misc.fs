@@ -16,31 +16,23 @@ variable mem_stat_frees
   
 : mem_stats
   ." calls to alloc: " mem_stat_allocs @ . cr
-  ." calls to free: " mem_stat_frees @ . cr
-  ;
+  ." calls to free: " mem_stat_frees @ . cr ;
   
 : mem_alloc ( n -- addr )
   allocate 0<> if s" memory error" throw endif
-  mem_stat_allocs increment
-  ;
+  mem_stat_allocs increment ;
   
 : %mem_alloc ( n n -- addr )
-  %alloc
-  mem_stat_allocs increment
-  ;
+  %alloc mem_stat_allocs increment ;
   
 : mem_resize ( addr n -- addr )
   dup 1 cells > if
     resize 0<> if s" memory error" throw endif
-  else
-    drop
-  endif
-  ;
+  else drop endif ;
    
 : mem_free ( addr -- )
   free 0<> if s" memory error" throw endif
-  mem_stat_frees increment
-  ;
+  mem_stat_frees increment ;
   
 : alloc_empty ( n -- addr ) 
   dup mem_alloc
@@ -53,33 +45,39 @@ variable mem_stat_frees
   ;
   
 : unallot_above ( addr -- )
-  here - allot
-  ;
+  here - allot ;
   
 \ addr, old, req
 : dyn_resize ( addr n1 n2 -- addr n1/n3 )
     2dup < if ( -- addr old req)
       nip 15 * 10 cells / 1+ cells ( -- addr new )
       tuck mem_resize swap
-    else
-      drop
-    endif
-  ;
+    else drop endif ;
   
 \ matrix
-
+ 
+: [matrix_size]  \ runtime ( rs cs -- mat )
+  postpone * postpone chars 
+  2 cells postpone literal postpone + ; immediate
   
-\ create empty char matrix
-: allot_matrix { rows cols }
-  rows cols * chars 2 cells + allot_empty
-  rows over ! cell+ cols over ! cell+
+: [matrix_init] \ runtime ( rs cs addr -- mat )
+  postpone tuck postpone 2swap postpone ! postpone cell+ 
+  postpone tuck postpone ! postpone cell+ ; immediate
+  
+: allot_matrix
+  2dup [matrix_size] allot_empty [matrix_init] ;
+  
+: alloc_matrix
+  2dup [matrix_size] alloc_empty [matrix_init] ;
+  
+: resize_matrix { mat rs cs -- mat }
+  rs cs mat 2 cells - rs cs [matrix_size] mem_resize [matrix_init] ;
+  
+: allot_matrixx ( rs cs -- mat )
+  2dup * chars 2 cells + allot_empty ( -- rs cs addr )
+  tuck 2swap ! cell+ tuck ! cell+
   ;
-  
-: alloc_matrix { rows cols }
-  rows cols * chars 2 cells + alloc_empty ( -- addr )
-  rows over ! cell+ cols over ! cell+
-  ;
-  
+      
 : free_matrix ( addr -- )
   2 cells - mem_free ;
 
@@ -108,12 +106,6 @@ variable mem_stat_frees
 : mat_get_row_arr ( mat row -- addr len )
   over .mat_col_count tuck ( -- mat len row len )
   * chars rot + swap
-  ;
-
-: resize_matrix { mat rows cols -- mat }
-  mat 2 cells - rows cols * chars
-  2 cells + mem_resize ( -- addr )
-  rows over ! cell+ cols over ! cell+
   ;
   
 :  matrix[ ( rows cols -- addr )

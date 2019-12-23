@@ -116,16 +116,13 @@ require dlx_base.fs
 \ ----------- printing the sparse matrix -------------
 
 : mark_row_active ( mat row -- )
-  3 -rot 0 mat_set
-  ;
+  3 -rot 0 mat_set ;
   
 : mark_col_active ( mat col -- )
-  1+ 3 -rot over .mat_row_count 1- swap mat_set
-  ;
+  1+ 3 -rot over .mat_row_count 1- swap mat_set ;
 
 : set_cell ( mat cel -- )
-  1 -rot dup .row_idx swap .col_idx 1+ mat_set 
-  ;
+  1 -rot dup .row_idx swap .col_idx 1+ mat_set ;
   
 : mark_active_cells ( dlx -- )
   dup .row_count 1+ over .col_count 1+ alloc_matrix ( -- dlx mat )
@@ -138,51 +135,43 @@ require dlx_base.fs
       2dup .col_idx mark_col_active
       2dup set_cell
   repeat
-  drop
-  ;
+  drop ;
   
 : col_marked_active? ( mat n -- )
-  over .mat_row_count 1- swap mat_get 0<>
-  ;
+  over .mat_row_count 1- swap mat_get 0<> ;
   
 : row_marked_active? ( mat n -- )
   0 mat_get 0<> ;
   
-: process_row { oarr mat r }
+: process_row { oarr mat r -- oarr }
   oarr mat .mat_col_count ( -- oarr n )
   1 ?do ( -- oarr )
     mat i col_marked_active? if
       mat r i mat_get
       over c! char+
     endif
-  loop
-  ;
+  loop ;
+  
+: compress_matrix_resize { rs pos mat -- mat }
+  mat rs 0<> if ( -- mat )
+    rs pos mat - over / ( -- mat rs cs )
+  else 0 0 endif
+  resize_matrix ;
   
 : compress_matrix { mat -- mat }
-  0 mat ( -- rs mat )
-  mat .mat_row_count 1- 0 
+  0 mat mat .mat_row_count 1- 0 
   ?do ( -- rs marr )
     mat i row_marked_active? if
       mat i process_row  ( -- rs marr )
       swap 1+ swap
     endif
   loop 
-  over 0 = if
-    2drop 0 0
-  else
-    mat - over / ( -- rs cs )
-  endif
-  
-  mat -rot
-  resize_matrix
-;
-  
+  mat compress_matrix_resize ;
   
 : dlx_print_matrix ( dlx -- )
   mark_active_cells 
   compress_matrix
   dup print_matrix
-  free_matrix
-  ;
+  free_matrix ;
   
 ." included dlx_utils.fs" cr
