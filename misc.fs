@@ -125,35 +125,39 @@ variable mem_stat_frees
   ;
   
 \ -- array
-
-: arr_for_all_ptrs ( addr n xt -- )
-  swap 0 ?do ( -- addr xt )
-    over i cells + over execute
-  loop
-  ;
   
-: @arr_for_all ( addr n xt -- )
-  \ ? ['] @ 
-  ;
-
+: [arr_for_all] { stp xt@ xt } ( runtime: addr n -- )
+  stp postpone literal postpone * postpone over postpone + postpone swap ( -- end addr)
+  postpone begin
+    postpone 2dup postpone <> postpone while
+    postpone dup xt@ compile, xt compile, 
+    stp postpone literal postpone +
+  postpone repeat
+  postpone 2drop
+  ; immediate
+  
+: [@_arr_for_all] { xt } ( runtime: addr n )
+  1 cells ['] @ xt postpone [arr_for_all]
+  ; immediate
+  
+: [c@_arr_for_all] { xt } ( runtime: addr n )
+  1 chars ['] c@ xt postpone [arr_for_all]
+  ; immediate
+  
 : arr_for_all ( addr n xt -- )
   swap 0 ?do ( -- addr xt )
     over i cells + @ over execute
   loop
   2drop
   ;
-  
-: ch_arr_for_all ( addr n xt -- )
-  swap 0 ?do ( -- addr xt )
-    over i chars + c@ over execute
-  loop
-  2drop
-  ;
 
 \ ----------------------------------- Print -----------------------------------
   
+: print_arr ( addr n -- )
+  [ ' . ] [@_arr_for_all] cr ;
+  
 : print_ch_arr ( addr n -- )
-  ['] . ch_arr_for_all cr ;
+  [ ' . ] [c@_arr_for_all] cr ;
   
 \ 
 : print_ch_mat ( n n addr -- )

@@ -85,14 +85,7 @@ constant sudo_choices
 : type_hline ( n -- )
   0 ?do emit_hline loop
   ;
-  
-: print_arr ( addr n -- )
-  0 ?do
-    dup i cells + @ .
-  loop
-  drop cr
-  ;
-    
+      
 : sudo_print_number ( c -- )
   dup 0<> if
     .
@@ -187,7 +180,7 @@ variable sudoku_dlx
   ;
   
 : sudo_process_solution ( addr len -- flag )
-  here >r
+  over >r here >r
   sudo_rows sudo_cols allot_matrix -rot 
   0 ?do ( -- mat addr )
     2dup i cells + @ ( -- mat addr mat n )
@@ -195,7 +188,8 @@ variable sudoku_dlx
     dup row_of_choice swap col_of_choice mat_set
   loop
   drop sudo_print_puzzle
-  r> unallot_above -1
+  r> unallot_above r> mem_free
+  true 
   ;
   
 : sudo_solve ( -- )

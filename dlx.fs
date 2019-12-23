@@ -44,18 +44,27 @@ require dlx_utils.fs
     init_column ( -- addr col )
     drop
   ;
+
+: free_row ( cel -- )
+  dup [ ' mem_free ] [for_row_except] 
+  mem_free ;
+  
+: free_partial_solution ( dlx -- )
+  dup .partial_solution_field dup @ 0<> if ( -- dlx addr )
+    dup @ mem_free
+  endif
+  0 swap ! .partial_solution_length_field 0 swap ! 
+  ;
   
 : dlx_free ( dlx -- )
+  dup dup .row_array swap .row_count [ ' free_row ] [@_arr_for_all]
+  dup dup .col_array swap .col_count [ ' mem_free ] [@_arr_for_all]
+  dup .row_array mem_free
+  dup .col_array mem_free
+  dup free_partial_solution
+  dup dlx% %size 0 fill mem_free ;
   
-  ;
-  
-\ TODO
-: reset_rows ( )
-  ;
-  
-: reset_columns ( addr -- )
-
-  ;
+\ TODO ?
   
 : dlx_reset ( dlx -- )
 
@@ -134,7 +143,7 @@ require dlx_utils.fs
   dup .mat_row_count
   0 ?do ( -- dlx mat )
     2dup dup i mat_get_row ( -- dlx mat dlx mat arr )
-    swap .mat_col_count bin_arr_to_positions ( -- dlx mat dlx arr2 l)
+    swap .mat_col_count positional_from_bin_arr ( -- dlx mat dlx arr2 l)
     i -rot dlx_add_row 
   loop
   2drop
@@ -144,124 +153,15 @@ require dlx_utils.fs
   
   ;
   
+: copy_partial_solution ( addr len -- addr2 len )
+  tuck cells dup mem_alloc ( -- len src sz dst )
+  dup >r swap cmove r> swap ;
+  
 : dlx_set_partial_solution ( dlx addr len -- )
+  rot dup free_partial_solution -rot
+  copy_partial_solution ( -- dlx addr len )
   rot tuck .partial_solution_length_field !     ( -- addr dlx)
   .partial_solution_field !
   ;
-  
-\ ---------------------------------- Testing ---------------------------------- 
-  
-create trow1 0 , 3 , 6 ,
-create trow2 0 , 3 , 
-create trow3 3 , 4 , 6 ,
-create trow4 2 , 4 , 5 ,
-create trow5 1 , 2 , 5 , 6 ,
-create trow6 1 , 6 ,
-
-: test1
-  dlx_init
-  dup 0 trow1 3 dlx_add_row 
-  dup 1 trow2 2 dlx_add_row 
-  dup 2 trow3 3 dlx_add_row 
-  dup 3 trow4 3 dlx_add_row 
-  dup 4 trow5 4 dlx_add_row 
-  dup 5 trow6 2 dlx_add_row 
-  ;
-
-\ 1, 0, 0, 1, 0, 0, 1 
-\ 1, 0, 0, 1, 0, 0, 0 
-\ 0, 0, 0, 1, 1, 0, 1 
-\ 0, 0, 1, 0, 1, 1, 0 
-\ 0, 1, 1, 0, 0, 1, 1
-\ 0, 1, 0, 0, 0, 0, 1 
-
-6 7 
-matrix[ 1 c, 0 c, 0 c, 1 c, 0 c, 0 c, 1 c,
-        1 c, 0 c, 0 c, 1 c, 0 c, 0 c, 0 c,
-        0 c, 0 c, 0 c, 1 c, 1 c, 0 c, 1 c,
-        0 c, 0 c, 1 c, 0 c, 1 c, 1 c, 0 c,
-        0 c, 1 c, 1 c, 0 c, 0 c, 1 c, 1 c,
-        0 c, 1 c, 0 c, 0 c, 0 c, 0 c, 1 c, 
-]matrix mat_var test_matrix1
-             
-variable test_vmatrix
-test_matrix1 test_vmatrix !
-
-: test_matrix
-  test_vmatrix @ ;
-
-
-: load_test_matrix ( "name" -- )
-  require
-  test_vmatrix !
-  ;
-
-: testdlx ( mat -- dlx )
-  cr dup .mat_col_count . ." cols " dup .mat_row_count . ." rows" ( -- mat )
-  dlx_init ( -- mat dlx )
-  tuck swap dlx_read_matrix 
-;
-
-: build_solution_rows { mat rows arr1 -- arr2 rows rl }
-  rows cells mem_alloc ( -- arr2 )
-  rows 0 ?do
-    mat arr1 i cells + @ ( -- arr2 mat rid )
-    mat_get_row over i cells + !    
-  loop
-  rows mat .mat_col_count
-  ;
-
-: validate_solution { arr rows rl -- }
-  here { sav }
-  rl chars allot_empty ( -- buf )
-  rows 0 ?do
-    arr i cells + @ ( buf row )
-    rl 0 ?do ( -- buf row )
-      over i chars + tuck c@ ( -- buf boff row c )
-\      dup .
-      over c@ 
-      dup . + ( -- buf boff row c )
-      dup 1 > if s" same column twice" exception throw endif
-      rot c! ( -- buf row )
-    char+ loop
-    drop
-    cr
-  loop
-  cr
-  rl 0 ?do ( -- buf )
-    dup c@
-    dup .
-    1 <> if s" missing column " exception throw endif
-    char+
-  loop
-  cr
-  drop sav unallot_above
-;
-    
-: process_solution2 ( arr len -- flag)
-  test_matrix -rot swap
-  build_solution_rows ( -- arr2 rows rl )
-  validate_solution
-  -1
-  ;
-  
-: process_solution ( arr len -- flag )
-  0 ?do ( -- arr )
-    dup i cells + @ dup . ( -- arr rid )
-    test_matrix tuck swap  ( -- arr m m rid )  
-    mat_get_row swap .mat_col_count  ( -- arr row rl )
-    0 ?do ( -- arr row )
-      dup c@ .
-      1 chars +
-    loop
-    drop
-    cr
-  loop
-  drop -1
-  ;
-
-: testalg ( dlx -- )
-  ['] process_solution2 dlx_solve
-;
                
 ." included dlx.fs" cr

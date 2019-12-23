@@ -2,51 +2,47 @@ require dlx_base.fs
 
 \ --------------------------------------------
   
-\ TODO for all in row etc..
-\ no iter for now...
-\ from to exclusive
-\ not worth it?
+  
+\ traverse linked list of nodes
 
-: for_all_right ( s e xt  -- )
-  -rot swap 
-  begin 
-    2dup <> while ( -- xt e s )
-    rot 2dup execute ( -- e s xt )
-    -rot .right ( -- xt e s.r)
-  repeat
-  2drop drop
-  ;
-  
-: for_all_left
-  ;
-  
-: for_all_up
-  ;
-  
-: for_all_down
-  ;
-  
-  
-: bin_arr_to_positions ( arr n -- arr n )
+: [apply_from_to] { nxt xt } ( runtime: end cur --  )  
+  postpone begin
+    postpone dup xt compile,
+    postpone 2dup postpone <> postpone while
+      nxt compile,
+  postpone repeat 
+  postpone 2drop ; immediate
 
-  swap
+: [apply_rgt_from_to] ( xt  -- ; runtime: end cur -- )
+  ['] .right swap postpone [apply_from_to] ; immediate
+  
+: [apply_down_from_to] ( xt  -- ; runtime: end cur -- )
+  ['] .down swap postpone [apply_from_to] ; immediate
+  
+: [for_row_except] ( xt -- ; runtime: cur -- )
+  postpone dup postpone .left postpone swap postpone .right
+  postpone [apply_rgt_from_to]
+  ; immediate
+  
+: [for_col_except] ( xt -- ; runtime: cur -- )
+  postpone dup postpone .up postpone swap postpone .down
+  postpone [apply_down_from_to]
+  ; immediate  
+  
+  
+\ create array of positions of 1s in original
 
-  over cells mem_alloc 
-  0 2swap swap ( n src dst --  dst 0 src n )
-  0 ?do ( -- dst j src )
-    i chars over + c@ ( -- dst j src c )
-    0<> if ( -- dst j src )
-      -rot 2dup cells + ( -- src dst j off )
-      i swap ! ( -- src dst j )
-      1+ rot ( -- dst j src )
+: positional_from_bin_arr ( arr n -- arr n )
+  dup cells mem_alloc ( src n dst )
+  dup >r swap 0 ?do ( src dst )
+    over i chars + c@ ( src dst c )
+    0<> if
+      i over ! cell+
     endif
   loop
-  drop tuck ( -- j dst j )
-  cells mem_resize 
+  nip r@ - r> swap ( -- arr sz )
+  tuck mem_resize swap cell / ;
   
-  swap
-  ;
-
   
 \ --------- Collect cells from whole matrix ----------
  
@@ -65,9 +61,7 @@ require dlx_base.fs
   begin
     .down dup node_is_head? if
       .right
-    else
-      exit
-    endif
+    else exit endif
     dup node_is_root?
   until
   ;
@@ -93,25 +87,22 @@ require dlx_base.fs
   ." , len:" .length .
   ." }" ;
 
- 
-\ TODO
-\ : print_active_cols ( dlx -- )
-\   .root dup .right swap .left node_lr_iter ['] print_column for_all ; 
-    
-\ : print_cols ( dlx -- )
-\   dup .col_array swap .col_count ['] print_column arr_for_all
-\  ;
   
+: print_col_array ( dlx -- )
+  dup .col_array swap .col_count [ ' print_column ] [@_arr_for_all] ;
+  
+: print_row_array ( dlx -- )
+  dup .row_array swap .row_count [ ' print_node ] [@_arr_for_all] ;
+  
+: print_active_cols
+  .root [ ' print_node ] [for_row_except] ;
+  
+: print_col_nodes ( col -- )
+  [ ' print_node ] [for_col_except] ;
   
 : print_active_nodes ( dlx -- )
-  .root 
-  begin
-    all_cells_next
-    dup node_is_root? false =
-    while dup print_node
-  repeat
-  drop
-  ;
+  .root [ ' print_col_nodes ] [for_row_except] ;
+  
     
 \ ----------- printing the sparse matrix -------------
 

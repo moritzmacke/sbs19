@@ -137,67 +137,55 @@ variable dlx_stats_cols_searched
   ;
   
 : solution_callback_template ( len arr -- flag )
-  swap cells dump -1
-  ;
+  swap cells dump true ;
 
-: collect_solution ( [x0 ... xi] skip top -- [x0 ... xi] skip src len )
-  sp@ 2 cells + tuck - ( -- ... xi skip src sz )
-  dup 1 cells / -rot ( -- ... xi skip len src sz )
-  dup mem_alloc ( --- ... len src sz addr )
-  swap 0 ?do ( --- .. len src addr )
+: collect_solution ( [x0 ... xn] skip top -- [x0 ... xn] skip addr len )
+  sp@ 2 cells + tuck - ( -- ... xn skip src sz )
+  dup 1 cells / -rot ( -- ... xn skip len src sz )
+  dup mem_alloc ( --- ... len src sz dst )
+  swap 0 ?do ( --- ... len src dst )
     over i + @ .row_idx 
     over i + !
   cell +loop
-  nip swap
-  ;
+  nip swap ;
    
 : row_is_blocked ( node -- flag )
   dup .up .down over <> ( -- node flag)
   swap .column dup .left .right <> ( -- flag flag)
-  or
-  ;
+  or ;
   
 : set_choice ( dlx rid -- n )
   dlx_get_row dup row_is_blocked if
     s" partial solution is invalid" exception throw
   endif
   dup .column cover
-  dup cover_all
-  ;
+  dup cover_all ;
   
 : set_choices { dlx addr len -- [c0 ... cn] }
   len 0 ?do
     dlx addr i cells + @ set_choice
-\    dup ." set " print_node cr
-  loop
-  ;
+  loop ;
   
 : unset_choices ( [0 .. cx] -- 0 )
   begin
     dup 0<> while ( -- ci )
     dup uncover_all
     .column uncover
-  repeat
-  ;
+  repeat ;
   
 : set_partial_solution ( dlx -- [c0 ... cn] )
   dup .partial_solution_length 
   dup 0<> if ( -- dlx len )
     over .partial_solution swap ( -- dlx addr len )
     set_choices
-  else
-    2drop
-  endif
-  ; 
+  else 2drop endif ; 
   
 : columns_empty? ( dlx -- flag )
-  .root dup .right =
-  ;
+  .root dup .right = ;
   
-: next_column ( [ c0 .. cn ] cx dlx  -- [ c0 ... cn cx ] col2 cy )
-  best_column dup cover ( -- ... cn cx col2 ) 
-  dup .down ( -- ... cn cx col2 cy ) 
-  ;
+: next_column ( [ c0 ... cn ] cx dlx  -- [ c0 ... cn cx ] col cy )
+  best_column dup cover ( -- ... cx col ) 
+  dup .down ;           ( -- ... cx col cy ) 
   
 : set_done_true ( -- flag )
   true postpone literal ; immediate
@@ -206,40 +194,31 @@ variable dlx_stats_cols_searched
   false postpone literal ; immediate
   
 : handle_recovery ( [c0 .. cn] col flag -- ... flag )
-  if \ search next solution?
-    cr ." continuing search" cr
-    over uncover_all ( -- ... n0 n1 col ) \ undo choice
-    swap .down set_done_false ( -- ... n0 col n1' flag ) \ proceed to next on same column
-  else
-    cr ." aborting search" cr
-    drop unset_choices drop set_done_true
-  endif
-  ;
+  if cr ." continuing search" cr                        \ find next solution?
+    over uncover_all          ( -- ... cn col )         \ undo choice
+    swap .down set_done_false ( -- ... col cn' flag )   \ proceed to next on same column
+  else cr ." aborting search" cr
+    drop unset_choices drop set_done_true ( -- flag)
+  endif ;
   
-: handle_backtrack ( n* n0 end -- flag )
-  over <> if \ not reached top? ( -- n* n0 )
-    dup .column ( -- ... n* n0 col )
-    over uncover_all ( -- ... n* n0 col )
-    swap .down set_done_false ( -- ... n* col n0' flag ) \ proceed to next on previous level
-  else ( -- [0 ... cx] )
-    unset_choices drop set_done_true
-  endif
-  ;
+: handle_backtrack ( ... cn last -- ...? flag )
+  over <> if                                            \ not reached top?
+    dup .column               ( -- ... cn col )
+    over uncover_all          ( -- ... cn col )
+    swap .down set_done_false ( -- ... col cn' flag )   \ proceed to next on previous level
+  else ( -- [0 ... cn] )
+    unset_choices drop set_done_true ( -- flag )
+  endif ;
     
 : dlx_solve { dlx report_solution_xt -- }
-  0 ( -- guard )
-  sp@ { top }
- 
+  0 sp@ { top } ( -- guard )
   dlx set_partial_solution ( -- [c0 .. cn] )
-  dup { last } \ otherwise will continue to search past provided solution and undo it
-
+  dup { last }                                  \ so we don't search past provided solution and undo it
   dlx next_column   
-  begin ( -- ... n0 col n1 )
-  
+  begin ( -- ... cn col cx )
 \    dlx dlx_print_matrix
-  
     2dup <> if                                  \ see if back at column head
-      dup cover_all ( -- ... n0 col n1 )        \ otherwise eliminate current row
+      dup cover_all                             \ otherwise eliminate current row
       dlx columns_empty? if                     \ if matrix empty we have solution
         swap top collect_solution ( -- ... col arr len )
         report_solution_xt execute ( -- ... col flag )
@@ -248,8 +227,8 @@ variable dlx_stats_cols_searched
         nip dlx next_column set_done_false
       endif
     else                                        \ undo column choice 
-      drop uncover ( -- ... n* n0 )
-      last handle_backtrack ( -- ... flag)
+      drop uncover ( -- ... cn )
+      last handle_backtrack ( -- ...? flag)
     endif
   until
   ." done" cr
