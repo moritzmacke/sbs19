@@ -2,7 +2,7 @@
 TODO
 what works right now:
  
-gforth dlx.fs
+gforth test_dlx.fs
 
 load_test_matrix mat1.fs
 test_matrix print_matrix
@@ -10,3 +10,18 @@ test_matrix testdlx testalg
 
 load_test_matrix mat2.fs
 test_matrix testdlx testalg
+
+
+gforth sudoku.fs
+
+0 0 0 1 0 0 0 2 0
+0 2 0 0 3 0 4 0 0
+5 0 0 0 6 0 7 0 0
+1 0 0 8 0 0 0 0 9
+0 0 0 0 0 0 0 0 0
+6 0 0 0 0 7 0 0 5
+0 0 9 0 8 0 0 0 1
+0 0 8 0 7 0 0 3 0
+0 4 0 0 0 5 0 0 0
+set_puzzle
+solve_puzzle
